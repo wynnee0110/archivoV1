@@ -1,0 +1,43 @@
+{
+  "posts": [
+    {
+      "id": "1",
+      "author": {
+        "name": "Alice Johnson",
+        "username": "alicej",
+        "avatar": "/avatars/alice.png"
+      },
+      "content": "Just shipped my first Next.js project 🚀 Super happy with how it turned out!",
+      "createdAt": "2026-02-05T08:30:00Z",
+      "likes": 42,
+      "reposts": 7,
+      "replies": 3
+    },
+    {
+      "id": "2",
+      "author": {
+        "name": "Bob Smith",
+        "username": "bobcodes",
+        "avatar": "/avatars/bob.png"
+      },
+      "content": "Tailwind CSS makes styling so fast it almost feels illegal 😤🔥",
+      "createdAt": "2026-02-05T09:10:00Z",
+      "likes": 128,
+      "reposts": 21,
+      "replies": 12
+    },
+    {
+      "id": "3",
+      "author": {
+        "name": "Charlie Lee",
+        "username": "charlie_dev",
+        "avatar": "/avatars/charlie.png"
+      },
+      "content": "Reminder: console.log is still a valid debugging strategy.",
+      "createdAt": "2026-02-05T10:02:00Z",
+      "likes": 256,
+      "reposts": 64,
+      "replies": 18
+    }
+  ]
+}

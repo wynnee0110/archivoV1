@@ -1,0 +1,79 @@
+{
+  "users": [
+    {
+      "id": "u001",
+      "username": "wayne_dev",
+      "displayName": "Wayne",
+      "verified": false,
+      "followers": 128,
+      "following": 95,
+      "joinedAt": "2024-06-15"
+    },
+    {
+      "id": "u002",
+      "username": "tech_guru",
+      "displayName": "Tech Guru",
+      "verified": true,
+      "followers": 5420,
+      "following": 210,
+      "joinedAt": "2022-03-10"
+    }
+  ],
+  "tweets": [
+    {
+      "id": "t001",
+      "userId": "u001",
+      "content": "Building a Next.js app with Firebase 🔥",
+      "likes": 24,
+      "retweets": 6,
+      "replies": 3,
+      "createdAt": "2026-02-05T08:30:00Z"
+    },
+    {
+      "id": "t002",
+      "userId": "u002",
+      "content": "AI projects in 2026 are getting wild 🚀",
+      "likes": 312,
+      "retweets": 89,
+      "replies": 41,
+      "createdAt": "2026-02-05T07:55:00Z"
+    },{
+      "id": "t001",
+      "userId": "u001",
+      "content": "Building a Next.js app with Firebase 🔥",
+      "likes": 24,
+      "retweets": 6,
+      "replies": 3,
+      "createdAt": "2026-02-05T08:30:00Z"
+    },{
+      "id": "t001",
+      "userId": "u001",
+      "content": "Building a Next.js app with Firebase 🔥",
+      "likes": 24,
+      "retweets": 6,
+      "replies": 3,
+      "createdAt": "2026-02-05T08:30:00Z"
+    }
+    
+  ],
+  "replies": [
+    {
+      "id": "r001",
+      "tweetId": "t002",
+      "userId": "u001",
+      "content": "Facts. Especially with open-source models.",
+      "likes": 12,
+      "createdAt": "2026-02-05T08:10:00Z"
+    }
+  ],
+  "likes": [
+    {
+      "userId": "u001",
+      "tweetId": "t002"
+    },
+    {
+      "userId": "u002",
+      "tweetId": "t001"
+    }
+  ]
+}
