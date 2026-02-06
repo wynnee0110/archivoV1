@@ -3,9 +3,9 @@ import Link from "next/link";
 export default function Floatbar() {
   // Buttons data for easy scaling
   const buttons = [
-    { href: "/home", icon: "/house-door.svg", size: "10" },
-    { href: "/home", icon: "/person.svg", size: "12" },
-    { href: "/home", icon: "/send.svg", size: "10" },
+    { href: "/", icon: "/house-door.svg", size: "12" },
+    { href: "/", icon: "/person.svg", size: "12" },
+    { href: "/", icon: "/send.svg", size: "12" },
   ];
 
   return (

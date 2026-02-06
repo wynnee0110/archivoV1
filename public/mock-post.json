@@ -1,43 +1,46 @@
 {
   "posts": [
     {
-      "id": "1",
-      "author": {
-        "name": "Alice Johnson",
-        "username": "alicej",
-        "avatar": "/avatars/alice.png"
-      },
-      "content": "Just shipped my first Next.js project 🚀 Super happy with how it turned out!",
-      "createdAt": "2026-02-05T08:30:00Z",
-      "likes": 42,
-      "reposts": 7,
-      "replies": 3
+      "id": 1,
+      "title": "Missed the last bus again",
+      "content": "I watched the bus pull away while tying my shoe, like it waited just long enough to be dramatic. Ended up walking home with my headphones dead and my thoughts way too loud. Sometimes the longest routes are the ones you never planned to take.",
+      "authorName": "Wayne",
+      "authorAvatar": "pfp/pfp1.jpeg"
     },
     {
-      "id": "2",
-      "author": {
-        "name": "Bob Smith",
-        "username": "bobcodes",
-        "avatar": "/avatars/bob.png"
-      },
-      "content": "Tailwind CSS makes styling so fast it almost feels illegal 😤🔥",
-      "createdAt": "2026-02-05T09:10:00Z",
-      "likes": 128,
-      "reposts": 21,
-      "replies": 12
+      "id": 2,
+      "title": "Coffee tasted weird today",
+      "content": "Same cup, same place, same order — but it tasted completely off. Maybe it was the mood, or maybe I’m just noticing small things more than I used to. Funny how tiny changes can throw off an entire morning.",
+      "authorName": "Kxng Nova",
+      "authorAvatar": "pfp/pfp2.jpeg"
     },
     {
-      "id": "3",
-      "author": {
-        "name": "Charlie Lee",
-        "username": "charlie_dev",
-        "avatar": "/avatars/charlie.png"
-      },
-      "content": "Reminder: console.log is still a valid debugging strategy.",
-      "createdAt": "2026-02-05T10:02:00Z",
-      "likes": 256,
-      "reposts": 64,
-      "replies": 18
+      "id": 3,
+      "title": "Why does time feel faster now",
+      "content": "Days blur together unless something breaks the pattern. I swear weeks used to feel longer. Now it’s like I blink and another month is gone. Maybe time didn’t speed up — maybe I just stopped paying attention.",
+      "authorName": "Lil Static",
+      "authorAvatar": "pfp/pfp3.jpeg"
+    },
+    {
+      "id": 4,
+      "title": "Tried cooking without a recipe",
+      "content": "I trusted my instincts and almost set off the smoke alarm. Somehow it still tasted decent. There’s something satisfying about messing up and surviving it without Googling what to do next.",
+      "authorName": "Echo Flex",
+      "authorAvatar": "pfp/pfp4.jpeg"
+    },
+    {
+      "id": 5,
+      "title": "Phone battery anxiety is real",
+      "content": "Once it hits 20%, my brain goes into emergency mode. I start rationing screen time like it’s food. Amazing how a tiny percentage number can control your behavior.",
+      "authorName": "RhymeShift",
+      "authorAvatar": "pfp/pfp5.jpeg"
+    },
+    {
+      "id": 6,
+      "title": "Rain makes the city quieter",
+      "content": "Everything slows down when it rains. Cars move softer, people walk closer to themselves, and the world feels briefly paused. It’s one of the few times noise feels optional.",
+      "authorName": "Midnight Ace",
+      "authorAvatar": "pfp/pfp6.jpeg"
     }
   ]
 }

@@ -6,6 +6,10 @@ type Post = {
   id: number;
   title: string;
   content: string;
+  authorName: string;
+  authorAvatar: string;
+  dateCreated: string;
+  
 };
 
 export default function App() {
@@ -38,7 +42,7 @@ export default function App() {
       <div className="
         w-full max-w-xl
         min-h-screen
-        border-l border-r border-t border-white/10
+        border-l border-r  border-white/10
       ">
         {loading && (
           <p className="px-4 py-6 text-gray-400">Loading...</p>
@@ -59,15 +63,41 @@ export default function App() {
                 hover:bg-white/5
                 transition-colors
                 cursor-pointer
+                m-10
               "
             >
-              <h2 className="text-base font-semibold">
-                {post.title}
-              </h2>
-              <p className="text-sm text-gray-300 mt-1">
-                {post.content}
-              </p>
-            </div>
+
+                {/* Profile row */}
+  <div className="flex items-start gap-3">
+    
+    {/* Avatar */}
+    <img
+      src={post.authorAvatar}
+      alt={post.authorName}
+      className="w-10 h-10 rounded-full object-cover"
+    />
+
+    {/* Post content */}
+    <div className="flex-1">
+      <div className="flex items-center gap-2">
+        <span className="font-semibold text-sm">
+          {post.authorName}
+        </span>
+        <span className="text-xs text-gray-400">
+          • just now
+        </span>
+      </div>
+
+      <h2 className="text-base font-semibold mt-1">
+        {post.title}
+      </h2>
+
+      <p className="text-sm text-gray-300 mt-1">
+        {post.content}
+      </p>
+    </div>
+  </div>
+</div>
           ))}
       </div>
     </main>
