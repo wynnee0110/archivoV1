@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react"; // Added useRef
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Share2, X, MessageCircle, MoreHorizontal, Trash2, Edit3 } from 'lucide-react';
+import { Share2, X, MoreHorizontal, Trash2, Edit3 } from 'lucide-react';
 import LikeButton from "./LikeButton";
+import CommentButton from "./CommentButton"; // <--- Import the new button
 
 export type Post = {
   id: string;
@@ -24,7 +25,7 @@ type PostCardProps = {
   post: Post;
   currentUserId?: string;
   onDelete?: (postId: string) => void;
-  onEdit?: (post: Post) => void; // Added onEdit prop
+  onEdit?: (post: Post) => void;
   onCommentClick: (postId: string) => void;
 };
 
@@ -44,7 +45,6 @@ export default function PostCard({ post, currentUserId, onDelete, onEdit, onComm
         setShowMenu(false);
       }
     }
-    // Only listen if the menu is actually open
     if (showMenu) {
       document.addEventListener("mousedown", handleClickOutside);
     }
@@ -59,7 +59,7 @@ export default function PostCard({ post, currentUserId, onDelete, onEdit, onComm
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
-      setShowMenu(false); // Close menu when modal closes
+      setShowMenu(false);
     }
     return () => { document.body.style.overflow = "unset"; };
   }, [isModalOpen]);
@@ -94,7 +94,7 @@ export default function PostCard({ post, currentUserId, onDelete, onEdit, onComm
       {showMenu && isMyPost && (
         <div 
           className="absolute right-0 mt-2 w-40 bg-white dark:bg-[#1e212b] border dark:border-gray-700 rounded-xl shadow-xl z-[150] overflow-hidden animate-in fade-in zoom-in-95 duration-100"
-          onClick={(e) => e.stopPropagation()} // Stop modal from closing if menu itself is clicked
+          onClick={(e) => e.stopPropagation()} 
         >
           <button 
             onClick={(e) => { e.stopPropagation(); onEdit?.(post); setShowMenu(false); }}
@@ -131,10 +131,9 @@ export default function PostCard({ post, currentUserId, onDelete, onEdit, onComm
           </div>
 
           {/* Only show menu in Feed if Modal is NOT open to prevent duplication */}
-          {isMyPost && !isModalOpen && <ActionMenu />}
+          {!isModalOpen && <ActionMenu />}
         </div>
 
-        {/* ... (Post Content Block stays exactly as you had it) ... */}
         <div className="mb-3">
           {feedTitle && (
             <h2 className="text-base font-bold text-gray-900 dark:text-white mb-1 leading-tight break-words">{feedTitle}</h2>
@@ -149,13 +148,15 @@ export default function PostCard({ post, currentUserId, onDelete, onEdit, onComm
 
         <div className="action-zone flex items-center gap-5 pt-3 border-t dark:border-gray-800">
           <LikeButton postId={post.id} currentUserId={currentUserId} />
-          <button 
-            onClick={(e) => { e.stopPropagation(); onCommentClick(post.id); }}
-            className="flex items-center gap-1.5 text-gray-500 text-sm hover:text-cyan-500 transition-colors"
-          >
-            <MessageCircle size={18} />
-            <span>Comments</span>
-          </button>
+          
+          {/* UPDATED: Use CommentButton here */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <CommentButton 
+              postId={post.id} 
+              onClick={() => onCommentClick(post.id)} 
+            />
+          </div>
+
         </div>
       </div>
 
@@ -177,8 +178,7 @@ export default function PostCard({ post, currentUserId, onDelete, onEdit, onComm
               </Link>
               
               <div className="flex items-center gap-2">
-                {/* Modal Menu Instance */}
-                {isMyPost && <ActionMenu />}
+                <ActionMenu />
                 <button 
                   onClick={() => {setIsModalOpen(false); setShowMenu(false);}} 
                   className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full dark:text-white transition-transform active:scale-90"
@@ -187,7 +187,7 @@ export default function PostCard({ post, currentUserId, onDelete, onEdit, onComm
                 </button>
               </div>
             </div>
-            {/* ... Modal Body/Footer remains the same ... */}
+
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 sm:p-8 custom-scrollbar">
               {post.title && <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-4 leading-tight break-words">{post.title}</h1>}
               <p className="text-gray-700 dark:text-gray-300 text-base sm:text-lg leading-relaxed whitespace-pre-wrap break-words mb-6">{post.content}</p>
@@ -197,10 +197,12 @@ export default function PostCard({ post, currentUserId, onDelete, onEdit, onComm
             <div className="p-5 bg-white dark:bg-[#161821] border-t dark:border-gray-800 sm:rounded-b-[2rem] flex items-center justify-between">
               <div className="flex items-center gap-6">
                 <LikeButton postId={post.id} currentUserId={currentUserId} />
-                <button onClick={() => { setIsModalOpen(false); onCommentClick(post.id); }} className="flex items-center gap-2 text-gray-500 hover:text-cyan-500 transition-colors">
-                  <MessageCircle size={22} />
-                  <span className="text-sm font-bold">Comments</span>
-                </button>
+                
+                {/* UPDATED: Use CommentButton inside the modal too */}
+                <CommentButton 
+                  postId={post.id} 
+                  onClick={() => { setIsModalOpen(false); onCommentClick(post.id); }} 
+                />
               </div>
               <button className="text-gray-500 hover:text-cyan-500 transition-colors"><Share2 size={20} /></button>
             </div>

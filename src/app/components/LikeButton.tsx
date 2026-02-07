@@ -5,11 +5,10 @@ import { supabase } from "@/app/lib/supabaseClient";
 import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-// 1. Update the type to allow 'undefined'
-type LikeButtonProps = {
+export interface LikeButtonProps {
   postId: string;
-  currentUserId?: string; // <--- Added '?' here
-};
+  currentUserId?: string | null; // Correctly handle both types
+}
 
 export default function LikeButton({ postId, currentUserId }: LikeButtonProps) {
   const [isLiked, setIsLiked] = useState(false);
@@ -18,7 +17,7 @@ export default function LikeButton({ postId, currentUserId }: LikeButtonProps) {
 
   useEffect(() => {
     const fetchLikes = async () => {
-      // Get User's Like Status (Only if user exists)
+      // Only fetch user-specific status if we have a valid ID
       if (currentUserId) {
         const { data } = await supabase
           .from("post_likes")
@@ -29,7 +28,6 @@ export default function LikeButton({ postId, currentUserId }: LikeButtonProps) {
         setIsLiked(!!data);
       }
 
-      // Get Total Like Count
       const { count } = await supabase
         .from("post_likes")
         .select("*", { count: "exact", head: true })
@@ -41,14 +39,14 @@ export default function LikeButton({ postId, currentUserId }: LikeButtonProps) {
     fetchLikes();
   }, [postId, currentUserId]);
 
-  const toggleLike = async () => {
-    // 2. Safety Check: If no user, redirect to login
+  const toggleLike = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
     if (!currentUserId) {
       router.push("/auth");
       return;
     }
 
-    // Optimistic Update (Instant UI change)
     const originalLiked = isLiked;
     const originalCount = likeCount;
 
@@ -57,23 +55,13 @@ export default function LikeButton({ postId, currentUserId }: LikeButtonProps) {
 
     try {
       if (originalLiked) {
-        // Unlike
-        await supabase
-          .from("post_likes")
-          .delete()
-          .eq("post_id", postId)
-          .eq("user_id", currentUserId);
+        await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", currentUserId);
       } else {
-        // Like
-        await supabase
-          .from("post_likes")
-          .insert({ post_id: postId, user_id: currentUserId });
+        await supabase.from("post_likes").insert({ post_id: postId, user_id: currentUserId });
       }
     } catch (error) {
-      // Revert on error
       setIsLiked(originalLiked);
       setLikeCount(originalCount);
-      console.error(error);
     }
   };
 
@@ -82,11 +70,8 @@ export default function LikeButton({ postId, currentUserId }: LikeButtonProps) {
       onClick={toggleLike}
       className={`flex items-center gap-2 text-sm transition group ${isLiked ? "text-pink-500" : "text-gray-500 hover:text-pink-400"}`}
     >
-      <Heart 
-        size={18} 
-        className={`transition-transform group-hover:scale-110 ${isLiked ? "fill-pink-500" : ""}`} 
-      />
-      <span>{likeCount}</span>
+      <Heart size={18} className={`transition-transform group-hover:scale-110 ${isLiked ? "fill-pink-500" : ""}`} />
+      <span className="font-bold">{likeCount}</span>
     </button>
   );
 }

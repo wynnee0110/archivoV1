@@ -244,7 +244,7 @@ export default function Profile() {
                   <div className="flex flex-col gap-2 mt-2">
                     <span className="text-gray-500 text-xs uppercase font-bold tracking-wide">Avatar Border Style</span>
                     <div className="flex gap-2 flex-wrap">
-                      {['none', 'rainbow', 'gold', 'neon', 'fire', 'galaxy', 'glitch', 'ghost'].map((variant) => (
+                      {['none', 'rainbow', 'gold', 'neon', 'fire'].map((variant) => (
                         <button
                           key={variant}
                           onClick={() => setProfile({ ...profile, border_variant: variant })}

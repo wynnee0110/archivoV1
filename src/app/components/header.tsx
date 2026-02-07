@@ -130,23 +130,84 @@ export default function Header() {
 
         <div className="flex items-center gap-3">
           
-          {/* --- NOTIFICATIONS --- */}
-          <div className="relative" ref={notifRef}>
-            <button 
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400"
-            >
-              <Bell size={20} />
-              {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
-            </button>
+{/* --- NOTIFICATIONS --- */}
+<div className="relative" ref={notifRef}>
+  <button 
+    onClick={() => setIsNotifOpen(!isNotifOpen)}
+    className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400 transition-all"
+  >
+    <Bell size={20} />
+    {unreadCount > 0 && (
+      <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-[#0f1117]">
+        {unreadCount}
+      </span>
+    )}
+  </button>
 
-            {isNotifOpen && (
-              <div className="absolute right-0 mt-3 w-72 bg-white dark:bg-[#1e212b] border border-gray-200 dark:border-gray-800 rounded-xl shadow-2xl overflow-hidden z-50">
-                 {/* ... (Existing Notification Logic remains same) ... */}
-                 <div className="p-3 text-center text-gray-500 text-sm">Notifications</div>
+  {isNotifOpen && (
+    <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-[#1e212b] border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 origin-top-right">
+      <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+        <h3 className="font-bold text-sm dark:text-white">Notifications</h3>
+        {unreadCount > 0 && (
+          <button 
+            onClick={() => notifications.forEach(n => !n.read && markRead(n.id))}
+            className="text-[10px] text-cyan-500 hover:underline font-bold uppercase tracking-tighter"
+          >
+            Mark all read
+          </button>
+        )}
+      </div>
+
+      <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+        {notifications.length > 0 ? (
+          notifications.map((notif) => (
+            <div 
+              key={notif.id}
+              onClick={() => {
+                markRead(notif.id);
+                if (notif.post_id) router.push(`/post/${notif.post_id}`);
+                setIsNotifOpen(false);
+              }}
+              className={`flex items-start gap-3 p-4 border-b border-gray-50 dark:border-gray-800/50 cursor-pointer transition-colors ${!notif.read ? 'bg-cyan-500/5 dark:bg-cyan-500/10' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
+            >
+              <div className="relative flex-shrink-0">
+                <img 
+                  src={notif.actor?.avatar_url || "/default-avatar.png"} 
+                  className="w-10 h-10 rounded-full object-cover" 
+                  alt=""
+                />
+                <div className="absolute -bottom-1 -right-1 p-1 bg-white dark:bg-[#1e212b] rounded-full shadow-sm">
+                  {notif.type === 'like' && <Heart size={10} className="fill-red-500 text-red-500" />}
+                  {notif.type === 'comment' && <MessageCircle size={10} className="text-blue-500" />}
+                  {notif.type === 'follow' && <UserPlus size={10} className="text-green-500" />}
+                </div>
               </div>
-            )}
+
+              <div className="flex-1">
+                <p className="text-sm dark:text-gray-200 leading-snug">
+                  <span className="font-bold">@{notif.actor?.username}</span>{' '}
+                  {notif.type === 'like' && 'liked your post'}
+                  {notif.type === 'comment' && 'commented on your post'}
+                  {notif.type === 'follow' && 'started following you'}
+                </p>
+                <span className="text-[10px] text-gray-500 mt-1 block">
+                  {new Date(notif.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                </span>
+              </div>
+
+              {!notif.read && <div className="w-2 h-2 bg-cyan-500 rounded-full mt-2" />}
+            </div>
+          ))
+        ) : (
+          <div className="p-10 text-center flex flex-col items-center gap-2">
+            <Bell size={32} className="text-gray-300 dark:text-gray-700" />
+            <p className="text-sm text-gray-500">No notifications yet</p>
           </div>
+        )}
+      </div>
+    </div>
+  )}
+</div>
 
           {/* --- USER MENU --- */}
           <div className="relative" ref={menuRef}>

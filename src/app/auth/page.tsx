@@ -68,7 +68,7 @@ export default function AuthPage() {
             text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500
             drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]
           ">
-            aR
+            a
           </h1>
           <p className="text-gray-400 text-sm">
             {isSignup ? "Create your account" : "Welcome back, traveler"}
