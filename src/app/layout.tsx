@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Header from "./components/header"
-import Footer from "./components/footer"
+import Header from "./components/header";
+import Footer from "./components/footer"; // Note: You imported this but didn't use it in your code below
 import Floatbar from "./components/floatbar";
+import { ThemeProvider } from "./components/ThemeProvider"; // <--- 1. Import this
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -25,15 +27,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // 2. Add suppressHydrationWarning to prevent mismatch errors
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        
       >
-      <Header />
-      <Floatbar />
-        {children}
-      
+        {/* 3. Wrap everything in the Provider */}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Header />
+          <Floatbar />
+          {children}
+          {/* <Footer />  <-- You had this imported, uncomment if needed */}
+        </ThemeProvider>
       </body>
     </html>
   );
