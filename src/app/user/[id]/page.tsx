@@ -6,9 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { MapPin, Link as LinkIcon, Edit3, Loader2, UserPlus, UserCheck, X, User } from 'lucide-react';
 import CommentModal from "@/app/components/CommentModal";
-import PostCard, { Post } from "@/app/components/PostCard"; // <--- Import PostCard
+import PostCard, { Post } from "@/app/components/PostCard"; 
 
-// Define Types
+// 1. Update Type Definition
 type ProfileData = {
   id: string;
   username: string;
@@ -16,6 +16,7 @@ type ProfileData = {
   bio: string;
   avatar_url: string | null;
   website: string | null;
+  border_variant?: string | null; // <--- Added
 };
 
 export default function UserProfile() {
@@ -24,17 +25,15 @@ export default function UserProfile() {
   
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]); // Use Post type
+  const [posts, setPosts] = useState<Post[]>([]); 
   
   // Stats
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   
-  // Comment Modal State
+  // Modals
   const [activePostId, setActivePostId] = useState<string | null>(null);
-  
-  // Follower/Following Modal State
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<'followers' | 'following' | null>(null);
   const [modalUsers, setModalUsers] = useState<ProfileData[]>([]);
@@ -48,7 +47,7 @@ export default function UserProfile() {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUser(user);
 
-      // Fetch Target Profile
+      // Fetch Profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
@@ -64,7 +63,8 @@ export default function UserProfile() {
           username: "user",
           bio: "Profile not set up.",
           avatar_url: null,
-          website: null
+          website: null,
+          border_variant: 'none'
         });
       }
 
@@ -75,7 +75,15 @@ export default function UserProfile() {
         .eq("author_id", targetUserId)
         .order("created_at", { ascending: false });
 
-      if (postData) setPosts(postData);
+      if (postData) {
+        // We map the posts here to include the author data immediately
+        // so the PostCard doesn't look empty while loading
+        const postsWithAuthor = postData.map(p => ({
+          ...p,
+          author: profileData // Attach the profile we just fetched
+        }));
+        setPosts(postsWithAuthor);
+      }
 
       // Fetch Stats
       const { count: followers } = await supabase
@@ -106,7 +114,6 @@ export default function UserProfile() {
     getData();
   }, [targetUserId]);
 
-  // --- OPEN FOLLOWER/FOLLOWING MODAL ---
   const openModal = async (type: 'followers' | 'following') => {
     setModalType(type);
     setShowModal(true);
@@ -135,7 +142,6 @@ export default function UserProfile() {
     }
   };
 
-  // --- HANDLE FOLLOW TOGGLE ---
   const handleFollowToggle = async () => {
     if (!currentUser) return router.push("/auth");
     const originalState = isFollowing;
@@ -153,10 +159,8 @@ export default function UserProfile() {
     }
   };
 
-  // --- DELETE POST (If viewing own public profile) ---
   const handleDelete = async (postId: string) => {
     if (!currentUser || currentUser.id !== targetUserId) return;
-    
     if (!window.confirm("Delete this post?")) return;
     const { error } = await supabase.from("posts").delete().eq("id", postId);
     if (!error) setPosts(posts.filter((p) => p.id !== postId));
@@ -171,6 +175,8 @@ export default function UserProfile() {
   }
 
   const isOwnProfile = currentUser?.id === targetUserId;
+  // Default to 'none' if undefined
+  const borderVariant = profile?.border_variant || 'none'; 
 
   return (
     <main className="flex flex-col items-center min-h-screen bg-[#0f1117] text-gray-200 p-4 font-sans">
@@ -180,16 +186,21 @@ export default function UserProfile() {
         {/* --- PROFILE CARD --- */}
         <div className="bg-[#1e212b] rounded-2xl shadow-xl overflow-hidden border border-gray-800 relative">
           
+          {/* Cover Photo */}
           <div className="h-32 bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 relative"></div>
 
           <div className="px-6 pb-6">
             <div className="flex justify-between items-start">
               
-              {/* Avatar */}
+              {/* --- 2. INTEGRATED BORDER AVATAR --- */}
               <div className="relative -mt-12">
-                <div className="p-1 bg-[#1e212b] rounded-full inline-block relative">
+                <div className={`avatar-wrapper border-${borderVariant} p-1 bg-[#1e212b] rounded-full inline-block`}>
                   {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-[#1e212b] shadow-lg" />
+                    <img 
+                      src={profile.avatar_url} 
+                      alt="Avatar" 
+                      className="w-24 h-24 rounded-full object-cover border-4 border-[#1e212b] shadow-lg bg-[#1e212b]" 
+                    />
                   ) : (
                     <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-700 to-gray-600 flex items-center justify-center text-3xl font-bold text-white border-4 border-[#1e212b] shadow-lg">
                       {profile?.username?.[0]?.toUpperCase() || "?"}
@@ -232,14 +243,14 @@ export default function UserProfile() {
               <div className="flex items-center gap-1"><MapPin size={14} /> Earth</div>
               {profile?.website && (
                 <div className="flex items-center gap-1 hover:text-indigo-400 transition cursor-pointer">
-                  <LinkIcon size={14} /> <a href={profile.website} target="_blank" className="hover:underline">Website</a>
+                  <LinkIcon size={14} /> <a href={profile.website} target="_blank" rel="noopener noreferrer" className="hover:underline">Website</a>
                 </div>
               )}
             </div>
 
             <div className="h-px bg-gray-800 my-6" />
 
-            {/* --- CLICKABLE STATS --- */}
+            {/* Stats */}
             <div className="grid grid-cols-3 text-center divide-x divide-gray-800">
               <button onClick={() => openModal('following')} className="flex flex-col hover:bg-white/5 rounded-lg transition py-1">
                 <span className="text-white font-bold text-lg">{followingCount}</span>
@@ -257,7 +268,7 @@ export default function UserProfile() {
           </div>
         </div>
 
-        {/* --- POSTS (Using PostCard Component) --- */}
+        {/* --- POSTS --- */}
         <h3 className="text-lg font-bold text-white px-2">
             {isOwnProfile ? "Your Posts" : `${profile?.username || "User"}'s Posts`}
         </h3>
@@ -266,17 +277,17 @@ export default function UserProfile() {
           {posts.map((post) => (
             <PostCard 
               key={post.id}
-              // Construct the author object since we already have the profile data
+              // 3. Pass Border Variant to Posts
               post={{
                 ...post,
                 author: {
                   username: profile?.username || "User",
                   full_name: profile?.full_name || "User",
-                  avatar_url: profile?.avatar_url || null
+                  avatar_url: profile?.avatar_url || null,
+                  border_variant: profile?.border_variant // <--- Integrated here
                 }
               }}
               currentUserId={currentUser?.id}
-              // Only pass onDelete if it's your own profile
               onDelete={isOwnProfile ? handleDelete : undefined}
               onCommentClick={setActivePostId}
             />
@@ -290,7 +301,7 @@ export default function UserProfile() {
         </div>
       </div>
 
-      {/* --- FOLLOWER/FOLLOWING MODAL --- */}
+      {/* --- MODALS --- */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-[#1e212b] border border-gray-700 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
@@ -308,13 +319,16 @@ export default function UserProfile() {
                   {modalUsers.map((u) => (
                     <Link href={`/user/${u.id}`} key={u.id} onClick={() => setShowModal(false)}>
                       <div className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-xl transition cursor-pointer">
-                        {u.avatar_url ? (
-                          <img src={u.avatar_url} alt="Av" className="w-10 h-10 rounded-full object-cover" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold">
-                            {u.username?.[0] || <User size={16} />}
-                          </div>
-                        )}
+                        {/* 4. Pass border to Modal Users too */}
+                        <div className={`avatar-wrapper border-${u.border_variant || 'none'} p-[2px] rounded-full`}>
+                            {u.avatar_url ? (
+                            <img src={u.avatar_url} alt="Av" className="w-10 h-10 rounded-full object-cover border-2 border-[#1e212b]" />
+                            ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold border-2 border-[#1e212b]">
+                                {u.username?.[0] || <User size={16} />}
+                            </div>
+                            )}
+                        </div>
                         <div>
                           <p className="text-white font-semibold text-sm">{u.full_name}</p>
                           <p className="text-gray-500 text-xs">@{u.username}</p>
@@ -329,7 +343,6 @@ export default function UserProfile() {
         </div>
       )}
 
-      {/* --- RENDER COMMENT MODAL --- */}
       {activePostId && (
         <CommentModal 
           postId={activePostId} 

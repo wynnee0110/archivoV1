@@ -109,7 +109,7 @@ export default function Header() {
         
         {/* --- LOGO --- */}
         <Link href="/" className="flex-shrink-0">
-          <h2 className="select-none font-black italic tracking-tighter text-3xl text-transparent bg-clip-text bg-white from-cyan-400 to-blue-500 cursor-pointer">
+          <h2 className="select-none font-black italic text-3xl text-transparent bg-clip-text bg-white from-cyan-400 to-blue-500 cursor-pointer">
             a
           </h2>
         </Link>

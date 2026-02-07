@@ -204,6 +204,7 @@ export default function PostCard({ post, currentUserId, onDelete, onEdit, onComm
                   onClick={() => { setIsModalOpen(false); onCommentClick(post.id); }} 
                 />
               </div>
+              
               <button className="text-gray-500 hover:text-cyan-500 transition-colors"><Share2 size={20} /></button>
             </div>
           </div>

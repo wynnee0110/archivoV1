@@ -6,17 +6,17 @@ import { MessageCircle } from "lucide-react";
 
 type CommentButtonProps = {
   postId: string;
-  onClick: () => void;
+  onClick: () => void; // Parent handles opening the modal
 };
 
 export default function CommentButton({ postId, onClick }: CommentButtonProps) {
-  const [count, setCount] = useState<number | null>(null);
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
     const fetchCount = async () => {
       const { count: commentCount, error } = await supabase
-        .from("comments") // Ensure this matches your table name
-        .select("*", { count: "exact", head: true })
+        .from("comments")
+        .select("*", { count: "exact", head: true }) // 'head: true' means we only ask for the number, not data
         .eq("post_id", postId);
 
       if (!error) {
@@ -30,15 +30,10 @@ export default function CommentButton({ postId, onClick }: CommentButtonProps) {
   return (
     <button 
       onClick={onClick}
-      className="flex items-center gap-2 text-gray-500 hover:text-cyan-400 transition-colors group"
+      className="flex items-center gap-2 text-sm hover:text-blue-400 transition group"
     >
-      <MessageCircle 
-        size={22} 
-        className="group-hover:scale-110 transition-transform" 
-      />
-      <span className="text-xs font-black uppercase text-gray-400 group-hover:text-cyan-400 transition-colors">
-        {count !== null ? `${count} Comments` : "Loading..."}
-      </span>
+      <MessageCircle size={18} className="group-hover:scale-110 transition-transform" /> 
+      <span>{count}</span>
     </button>
   );
 }
