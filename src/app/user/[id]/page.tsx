@@ -42,6 +42,9 @@ export default function UserProfile() {
   const router = useRouter();
 
   useEffect(() => {
+    // Scroll to top when component mounts or user changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
     async function getData() {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUser(user);
@@ -238,7 +241,6 @@ export default function UserProfile() {
               {profile?.website && (
                 <div className="flex items-center gap-1 hover:text-indigo-500 dark:hover:text-indigo-400 transition cursor-pointer">
                   <LinkIcon size={14} /> 
-                  {/* 👇 This part strips http/https and trailing slashes for display */}
                   <a 
                     href={profile.website} 
                     target="_blank" 
@@ -246,10 +248,10 @@ export default function UserProfile() {
                     className="hover:underline"
                   >
                     {profile.website
-    .replace(/^https?:\/\//, '') // 1. Remove http:// or https://
-    .replace(/^www\./, '')       // 2. Remove www.
-    .split('/')[0]               // 3. Remove /path/to/page
-  }
+                      .replace(/^https?:\/\//, '')
+                      .replace(/^www\./, '')
+                      .split('/')[0]
+                    }
                   </a>
                 </div>
               )}

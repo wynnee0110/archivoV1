@@ -7,16 +7,17 @@ import Link from "next/link";
 import { Loader2, Plus, RefreshCw } from 'lucide-react';
 import CommentModal from "@/app/components/CommentModal";
 import PostCard from "@/app/components/PostCard"; 
-import { fetchTechNews } from "@/app/lib/newsApi"; 
+import FollowStrip from "@/app/components/FollowStrip";
+import { fetchTechNews } from "@/app/lib/newsApi";
 
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
-  // 1. Added state to store your specific profile info
   const [userProfile, setUserProfile] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false); 
-  const [activePostId, setActivePostId] = useState<string | null>(null); 
+  const [activePostId, setActivePostId] = useState<string | null>(null);
+  const [followStripIndex, setFollowStripIndex] = useState<number>(1); // Random placement index
   const router = useRouter();
 
   const updateFeed = useCallback(async (isBackground = false) => {
@@ -62,6 +63,11 @@ export default function HomePage() {
           [remainingPosts[i], remainingPosts[j]] = [remainingPosts[j], remainingPosts[i]];
         }
         setPosts([newestItem, ...remainingPosts]);
+        
+        // Generate random index for FollowStrip (between 1 and min(5, total posts - 1))
+        const maxIndex = Math.min(5, allPosts.length - 1);
+        const randomIndex = Math.floor(Math.random() * maxIndex) + 1;
+        setFollowStripIndex(randomIndex);
       }
     } catch (error) {
       console.error("Feed update error:", error);
@@ -80,7 +86,7 @@ export default function HomePage() {
       }
       setCurrentUser(session.user);
 
-      // 2. FETCH DATA
+      // FETCH USER PROFILE DATA
       const { data: profile } = await supabase
         .from("profiles")
         .select("full_name, username")
@@ -120,7 +126,7 @@ export default function HomePage() {
     );
   }
 
-  // 3. LOGIC: Pick the best name to show
+  // Pick the best name to show
   const displayName = userProfile?.full_name || userProfile?.username || currentUser?.email?.split('@')[0];
 
   return (
@@ -148,14 +154,18 @@ export default function HomePage() {
 
         {/* --- FEED --- */}
         <div className="flex flex-col gap-6">
-          {posts.map((post) => (
-            <PostCard 
-              key={post.id}
-              post={post}
-              currentUserId={currentUser?.id}
-              onDelete={handleDelete}
-              onCommentClick={setActivePostId}
-            />
+          {posts.map((post, index) => (
+            <React.Fragment key={post.id}>
+              <PostCard 
+                post={post}
+                currentUserId={currentUser?.id}
+                onDelete={handleDelete}
+                onCommentClick={setActivePostId}
+              />
+
+              {/* 🚀 INJECTION: Follow Strip at random position */}
+              {index === followStripIndex && currentUser?.id && <FollowStrip currentUserId={currentUser.id} />}
+            </React.Fragment>
           ))}
         </div>
       </div>
@@ -167,6 +177,12 @@ export default function HomePage() {
           onClose={() => setActivePostId(null)} 
         />
       )}
+
+      {/* Helper Styles for Hide Scrollbar */}
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
 
     </main>
   );

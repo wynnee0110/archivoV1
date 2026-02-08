@@ -7,7 +7,7 @@ import CommentModal from "@/app/components/CommentModal";
 import PostCard, { Post } from "@/app/components/PostCard"; 
 import UserBadge from "@/app/components/UserBadge"; 
 import Link from "next/link"; 
-import { MapPin, Link as LinkIcon, Calendar, Edit3, Loader2, Camera, Save, X, User } from 'lucide-react';
+import { MapPin, Link as LinkIcon, Calendar, Edit3, Loader2, Camera, Save, X, User, UserPlus, UserCheck, UserMinus } from 'lucide-react';
 
 // 👇 1. CLOUDINARY CONFIG (Replace these!)
 const CLOUD_NAME = "dfi0obvzn"; 
@@ -76,6 +76,7 @@ export default function Profile() {
   const [modalType, setModalType] = useState<'followers' | 'following' | null>(null);
   const [modalUsers, setModalUsers] = useState<ProfileData[]>([]);
   const [modalLoading, setModalLoading] = useState(false);
+  const [followStatus, setFollowStatus] = useState<Record<string, boolean>>({});
 
   const [profile, setProfile] = useState<ProfileData>({
     username: "",
@@ -140,24 +141,54 @@ export default function Profile() {
   }, [router]);
 
   const openModal = async (type: 'followers' | 'following') => {
+    if (!user) return;
+
     setModalType(type);
     setShowModal(true);
     setModalLoading(true);
     setModalUsers([]);
+    setFollowStatus({});
 
     try {
       let userIds: string[] = [];
+
       if (type === 'followers') {
-        const { data } = await supabase.from('follows').select('follower_id').eq('following_id', user.id);
+        const { data } = await supabase
+          .from('follows')
+          .select('follower_id')
+          .eq('following_id', user.id);
+
         userIds = data?.map(d => d.follower_id) || [];
       } else {
-        const { data } = await supabase.from('follows').select('following_id').eq('follower_id', user.id);
+        const { data } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', user.id);
+
         userIds = data?.map(d => d.following_id) || [];
       }
 
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('*').in('id', userIds);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', userIds);
+
         setModalUsers(profiles || []);
+
+        // Check follow status for each user
+        const { data: followData } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', user.id)
+          .in('following_id', userIds);
+
+        const statusMap: Record<string, boolean> = {};
+        followData?.forEach(f => {
+          statusMap[f.following_id] = true;
+        });
+        
+        setFollowStatus(statusMap);
       }
     } catch (error) {
       console.error(error);
@@ -166,7 +197,78 @@ export default function Profile() {
     }
   };
 
-  // 👇 3. UPDATED UPLOAD FUNCTION (Uses Cloudinary)
+  const handleModalAction = async (targetUserId: string) => {
+    if (!user) return;
+
+    if (modalType === 'followers') {
+      // Remove follower
+      try {
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', targetUserId)
+          .eq('following_id', user.id);
+
+        // Update local state
+        setModalUsers(modalUsers.filter(u => u.id !== targetUserId));
+        setFollowersCount(prev => prev - 1);
+      } catch (error) {
+        console.error('Error removing follower:', error);
+      }
+    } else if (modalType === 'following') {
+      // Unfollow
+      try {
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', user.id)
+          .eq('following_id', targetUserId);
+
+        // Update local state
+        setModalUsers(modalUsers.filter(u => u.id !== targetUserId));
+        setFollowingCount(prev => prev - 1);
+        
+        // Update follow status
+        const newStatus = { ...followStatus };
+        delete newStatus[targetUserId];
+        setFollowStatus(newStatus);
+      } catch (error) {
+        console.error('Error unfollowing:', error);
+      }
+    }
+  };
+
+  const handleFollowToggle = async (targetUserId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!user) return;
+
+    const isCurrentlyFollowing = followStatus[targetUserId];
+
+    try {
+      if (isCurrentlyFollowing) {
+        // Unfollow
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', user.id)
+          .eq('following_id', targetUserId);
+
+        setFollowStatus({ ...followStatus, [targetUserId]: false });
+      } else {
+        // Follow
+        await supabase
+          .from('follows')
+          .insert({ follower_id: user.id, following_id: targetUserId });
+
+        setFollowStatus({ ...followStatus, [targetUserId]: true });
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+    }
+  };
+
   const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploading(true);
@@ -174,17 +276,14 @@ export default function Profile() {
 
       const file = event.target.files[0];
       
-      // Optional: Check size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
         alert("File too large! Please upload under 5MB.");
         setUploading(false);
         return;
       }
 
-      // A. Upload to Cloudinary
       const imageUrl = await uploadToCloudinary(file);
 
-      // B. Save URL to Supabase Database (profiles table)
       const { error } = await supabase
         .from('profiles')
         .update({ avatar_url: imageUrl })
@@ -192,7 +291,6 @@ export default function Profile() {
 
       if (error) throw error;
 
-      // C. Update Local State
       setProfile({ ...profile, avatar_url: imageUrl });
       
     } catch (error) {
@@ -284,7 +382,6 @@ export default function Profile() {
               {isEditing ? (
                 <div className="flex flex-col gap-3 animate-in fade-in">
                   
-                  {/* Inputs with Limits */}
                   <input 
                     type="text" 
                     maxLength={30} 
@@ -413,8 +510,8 @@ export default function Profile() {
               ) : (
                 <div className="flex flex-col gap-2">
                   {modalUsers.map((u) => (
-                    <Link href={`/user/${u.id}`} key={u.id} onClick={() => setShowModal(false)}>
-                      <div className="flex items-center gap-3 p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition cursor-pointer">
+                    <div key={u.id} className="flex items-center justify-between gap-3 p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition">
+                      <Link href={`/user/${u.id}`} onClick={() => setShowModal(false)} className="flex items-center gap-3 flex-1">
                         {u.avatar_url ? (
                           <img src={u.avatar_url} alt="Av" className="w-10 h-10 rounded-full object-cover" />
                         ) : (
@@ -429,8 +526,39 @@ export default function Profile() {
                           </p>
                           <p className="text-gray-500 text-xs">@{u.username}</p>
                         </div>
-                      </div>
-                    </Link>
+                      </Link>
+                      
+                      {modalType === 'followers' ? (
+                        <button
+                          onClick={() => handleModalAction(u.id!)}
+                          className="px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"
+                        >
+                          <UserMinus size={14} />
+                          Remove
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => handleFollowToggle(u.id!, e)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors ${
+                            followStatus[u.id!]
+                              ? 'bg-transparent border border-gray-600 text-gray-900 dark:text-white hover:border-red-500/50 hover:text-red-500'
+                              : 'bg-black dark:bg-white text-white dark:text-black hover:opacity-80'
+                          }`}
+                        >
+                          {followStatus[u.id!] ? (
+                            <>
+                              <UserCheck size={14} />
+                              Following
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus size={14} />
+                              Follow
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
