@@ -10,21 +10,42 @@ import PostCard from "@/app/components/PostCard";
 import FollowStrip from "@/app/components/FollowStrip";
 import { fetchTechNews } from "@/app/lib/newsApi";
 
+// 1. IMPORTS FOR STORY FEATURE
+import StoryStrip from "@/app/components/StoryStrip";
+import StoryUploadModal from "@/app/components/StoryUploadModal";
+import StoryViewerModal from "@/app/components/StoryViewerModal";
+
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
+  const [stories, setStories] = useState<any[]>([]); // Stories State
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false); 
   const [activePostId, setActivePostId] = useState<string | null>(null);
-  const [followStripIndex, setFollowStripIndex] = useState<number>(1); // Random placement index
+  const [followStripIndex, setFollowStripIndex] = useState<number>(1);
   const router = useRouter();
+
+  // 2. STORY UI STATES
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [viewingStories, setViewingStories] = useState<any[] | null>(null); // Stores Array of stories
 
   const updateFeed = useCallback(async (isBackground = false) => {
     if (!isBackground) setLoading(true);
     else setIsUpdating(true);
 
     try {
+      // --- FETCH STORIES (Last 24h) ---
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: storiesData } = await supabase
+        .from("stories")
+        .select(`*, author:profiles!author_id(username, avatar_url)`) 
+        .gt("created_at", twentyFourHoursAgo)
+        .order("created_at", { ascending: false });
+
+      if (storiesData) setStories(storiesData);
+
+      // --- FETCH POSTS ---
       const { data: postsData } = await supabase
         .from("posts")
         .select("*")
@@ -64,7 +85,6 @@ export default function HomePage() {
         }
         setPosts([newestItem, ...remainingPosts]);
         
-        // Generate random index for FollowStrip (between 1 and min(5, total posts - 1))
         const maxIndex = Math.min(5, allPosts.length - 1);
         const randomIndex = Math.floor(Math.random() * maxIndex) + 1;
         setFollowStripIndex(randomIndex);
@@ -75,7 +95,7 @@ export default function HomePage() {
       setLoading(false);
       setIsUpdating(false);
     }
-  }, []);
+  }, []); 
 
   useEffect(() => {
     const init = async () => {
@@ -86,10 +106,9 @@ export default function HomePage() {
       }
       setCurrentUser(session.user);
 
-      // FETCH USER PROFILE DATA
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, username")
+        .select("full_name, username, avatar_url") 
         .eq("id", session.user.id)
         .single();
 
@@ -126,7 +145,6 @@ export default function HomePage() {
     );
   }
 
-  // Pick the best name to show
   const displayName = userProfile?.full_name || userProfile?.username || currentUser?.email?.split('@')[0];
 
   return (
@@ -152,6 +170,16 @@ export default function HomePage() {
           </Link>
         </div>
 
+        {/* --- 3. STORY STRIP --- */}
+        <div className="mb-8">
+           <StoryStrip 
+              stories={stories} 
+              currentUser={currentUser}
+              onAddStory={() => setIsUploadOpen(true)}
+              onViewStory={(userStories) => setViewingStories(userStories)}
+           />
+        </div>
+
         {/* --- FEED --- */}
         <div className="flex flex-col gap-6">
           {posts.map((post, index) => (
@@ -163,13 +191,15 @@ export default function HomePage() {
                 onCommentClick={setActivePostId}
               />
 
-              {/* 🚀 INJECTION: Follow Strip at random position */}
               {index === followStripIndex && currentUser?.id && <FollowStrip currentUserId={currentUser.id} />}
             </React.Fragment>
           ))}
         </div>
       </div>
 
+      {/* --- MODALS --- */}
+
+      {/* 1. Comment Modal */}
       {activePostId && (
         <CommentModal 
           postId={activePostId} 
@@ -178,7 +208,23 @@ export default function HomePage() {
         />
       )}
 
-      {/* Helper Styles for Hide Scrollbar */}
+      {/* 2. Story Upload Modal */}
+      {isUploadOpen && (
+        <StoryUploadModal 
+          currentUserId={currentUser?.id}
+          onClose={() => setIsUploadOpen(false)}
+          onUploadSuccess={() => updateFeed(true)} 
+        />
+      )}
+
+      {/* 3. Story Viewer Modal (Multi-Story Support) */}
+      {viewingStories && (
+        <StoryViewerModal 
+          stories={viewingStories}
+          onClose={() => setViewingStories(null)}
+        />
+      )}
+
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
