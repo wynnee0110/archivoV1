@@ -1,149 +1,163 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "./lib/supabaseClient";
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "@/app/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2 } from 'lucide-react';
-import CommentModal from "./components/CommentModal";
-import PostCard, { Post } from "./components/PostCard"; // <--- Import the component & type
+import { Loader2, Plus, RefreshCw } from 'lucide-react';
+import CommentModal from "@/app/components/CommentModal";
+import PostCard, { Post } from "@/app/components/PostCard"; 
+import { fetchTechNews } from "@/app/lib/newsApi"; 
 
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false); 
   
-  // State to track which post's comments are open
   const [activePostId, setActivePostId] = useState<string | null>(null); 
-  
   const router = useRouter();
 
-  // 1. Initial Data Fetch
+  const updateFeed = useCallback(async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
+    else setIsUpdating(true);
+
+    try {
+      // 1. Fetch Supabase Posts
+      const { data: postsData } = await supabase
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      // 2. Fetch Profiles for Supabase posts
+      let formattedDbPosts: any[] = [];
+      if (postsData && postsData.length > 0) {
+        const authorIds = [...new Set(postsData.map(post => post.author_id))];
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, username, full_name, avatar_url, border_variant, badge")
+          .in("id", authorIds);
+
+        const profilesMap: Record<string, any> = {};
+        profilesData?.forEach(profile => {
+          profilesMap[profile.id] = profile;
+        });
+
+        formattedDbPosts = postsData.map(post => ({
+          ...post,
+          author: profilesMap[post.author_id],
+          is_news: false 
+        }));
+      }
+
+      // 3. Fetch Fresh GNews
+      const newsPosts = await fetchTechNews();
+
+      // 4. RANDOMIZED SHUFFLE LOGIC 🎲
+      const allPosts = [...formattedDbPosts, ...newsPosts];
+
+      if (allPosts.length > 0) {
+        // Find the absolute newest item (User or News) to keep at index 0
+        const newestItem = allPosts.reduce((prev, curr) => 
+          new Date(curr.created_at) > new Date(prev.created_at) ? curr : prev
+        );
+
+        // Shuffle the rest using Fisher-Yates algorithm
+        const remainingPosts = allPosts.filter(p => p.id !== newestItem.id);
+        
+        for (let i = remainingPosts.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [remainingPosts[i], remainingPosts[j]] = [remainingPosts[j], remainingPosts[i]];
+        }
+
+        // Set the final randomized feed with the newest at the top
+        setPosts([newestItem, ...remainingPosts]);
+      }
+    } catch (error) {
+      console.error("Feed update error:", error);
+    } finally {
+      setLoading(false);
+      setIsUpdating(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const getData = async () => {
-      // Get Current User
+    const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (!session) {
         router.push("/auth"); 
         return;
       }
       setCurrentUser(session.user);
-
-      // A. Get Posts
-      const { data: postsData, error: postsError } = await supabase
-        .from("posts")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (postsError) {
-        console.error("Error fetching posts:", postsError);
-        setLoading(false);
-        return;
-      }
-
-      // B. Get Profiles for these posts
-      const authorIds = [...new Set((postsData || []).map(post => post.author_id))];
-
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, username, full_name, avatar_url, border_variant, badge")
-        .in("id", authorIds);
-
-      // Create lookup map
-      const profilesMap: Record<string, any> = {};
-      profilesData?.forEach(profile => {
-        profilesMap[profile.id] = profile;
-      });
-
-      // Merge Data
-      const combinedPosts = postsData?.map(post => ({
-        ...post,
-        author: profilesMap[post.author_id]
-      }));
-
-      setPosts(combinedPosts || []);
-      setLoading(false);
+      await updateFeed(false);
     };
 
-    getData();
-  }, [router]);
+    init();
 
-  // Logout function
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/auth");
-  };
+    // 🔄 AUTO-POLL: Update every 60 seconds
+    const interval = setInterval(() => {
+      updateFeed(true);
+    }, 100000);
 
-  // Delete Post Function
+    return () => clearInterval(interval);
+  }, [router, updateFeed]);
+
   const handleDelete = async (postId: string) => {
-    const confirmed = window.confirm("Are you sure you want to delete this post?");
+    const postToDelete = posts.find(p => p.id === postId);
+    if (postToDelete?.is_news) return; 
+
+    const confirmed = window.confirm("Delete this post?");
     if (!confirmed) return;
 
-    const { error } = await supabase
-      .from("posts")
-      .delete()
-      .eq("id", postId);
-
-    if (error) {
-      alert("Error deleting post!");
-      console.error(error);
-    } else {
-      setPosts(posts.filter((p) => p.id !== postId));
-    }
+    const { error } = await supabase.from("posts").delete().eq("id", postId);
+    if (!error) setPosts(posts.filter((p) => p.id !== postId));
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50  dark:bg-[#0f1117] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117] flex items-center justify-center">
         <Loader2 className="animate-spin text-cyan-400" size={32} />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-[#0f1117] [#]text-gray-200 p-4 font-sans flex flex-col items-center">
+    <main className="min-h-screen bg-gray-50 dark:bg-[#0f1117] p-4 font-sans flex flex-col items-center">
       
       <div className="w-full max-w-lg mt-10 mb-24">
         
         {/* --- HEADER --- */}
         <div className="flex justify-between items-end mb-8 px-2">
           <div>
-            <p className="text-gray-400 dark:text-gray-400 text-xs uppercase tracking-wider mb-1">Welcome back</p>
-            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 truncate max-w-[200px] sm:max-w-xs">
-              {posts.find(p => p.author_id === currentUser.id)?.author?.full_name || currentUser?.email?.split('@')[0]}
+            <p className="text-gray-400 text-xs uppercase tracking-wider mb-1 flex items-center gap-2">
+              Live Feed {isUpdating && <RefreshCw size={10} className="animate-spin" />}
+            </p>
+            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 truncate max-w-[200px]">
+              {currentUser?.email?.split('@')[0]}
             </h1>
           </div>
 
-          {/* Create Post Link */}
           <Link href="/create">
-             <button className="bg-white text-black px-4 py-2 rounded-full font-bold text-sm hover:bg-gray-200 transition shadow">
-                + New Post
+             <button className="bg-white text-black px-4 py-2 rounded-full font-bold text-sm hover:bg-gray-200 transition shadow flex items-center gap-2">
+                <Plus size={16} /> New Post
              </button>
           </Link>
         </div>
 
-        {/* --- POSTS FEED --- */}
+        {/* --- FEED --- */}
         <div className="flex flex-col gap-6">
-          {posts.length === 0 ? (
-            <div className="text-center py-20 bg-[#1e212b] rounded-2xl border border-gray-800 border-dashed">
-              <p className="text-gray-500">No posts yet. Be the first to post!</p>
-            </div>
-          ) : (
-            posts.map((post) => (
-              <PostCard 
-                key={post.id}
-                post={post}
-                currentUserId={currentUser?.id}
-                onDelete={handleDelete}
-                onCommentClick={setActivePostId} // Opens the modal
-              />
-            ))
-          )}
+          {posts.map((post) => (
+            <PostCard 
+              key={post.id}
+              post={post}
+              currentUserId={currentUser?.id}
+              onDelete={handleDelete}
+              onCommentClick={setActivePostId}
+            />
+          ))}
         </div>
       </div>
 
-      {/* --- RENDER COMMENT MODAL --- */}
       {activePostId && (
         <CommentModal 
           postId={activePostId} 

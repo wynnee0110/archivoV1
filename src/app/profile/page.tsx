@@ -260,7 +260,7 @@ export default function Profile() {
                     )}
                   </div>
                   {isEditing && (
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full cursor-pointer hover:bg-black/60 transition-colors z-10">
+                    <label className="absolute inset-0 mb-2 flex items-center justify-center bg-black/50 rounded-full cursor-pointer hover:bg-black/60 transition-colors z-10">
                       {uploading ? <Loader2 className="animate-spin text-white" /> : <Camera className="text-white" />}
                       <input type="file" accept="image/*" onChange={uploadAvatar} disabled={uploading} className="hidden" />
                     </label>
