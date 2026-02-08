@@ -5,7 +5,8 @@ import { supabase } from "@/app/lib/supabaseClient";
 import Link from "next/link";
 import { X, Send, Trash2, Loader2, User, MessageCircle, CornerDownRight } from "lucide-react";
 
-// Updated Type to include parent_id and nested replies
+/* ================= TYPES ================= */
+
 type Comment = {
   id: string;
   content: string;
@@ -31,56 +32,65 @@ export default function CommentModal({ postId, currentUserId, onClose }: Comment
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  
-  // Track who we are replying to
+
   const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Fetch and Organize Comments (Flat List -> Tree Structure)
+  /* ================= FETCH COMMENTS ================= */
+
   useEffect(() => {
     const fetchComments = async () => {
       const { data, error } = await supabase
         .from("comments")
-        .select(`*, author:profiles(username, full_name, avatar_url)`)
+        .select(`
+          *,
+          author:profiles!comments_author_id_fkey(
+            username,
+            full_name,
+            avatar_url
+          )
+        `) // ✅ specify which FK to use
         .eq("post_id", postId)
-        .order("created_at", { ascending: true }); // Oldest first to keep threads logical
+        .order("created_at", { ascending: true });
 
       if (error) {
         console.error("Error fetching comments:", error);
       } else if (data) {
-        // --- LOGIC TO NEST COMMENTS ---
-        const commentMap: Record<string, Comment> = {};
-        const rootComments: Comment[] = [];
+        const map: Record<string, Comment> = {};
+        const roots: Comment[] = [];
 
-        // 1. Create a map of all comments
+        // create map
         data.forEach((c) => {
-          commentMap[c.id] = { ...c, replies: [] };
+          map[c.id] = { ...c, replies: [] };
         });
 
-        // 2. Sort into Parents and Children
+        // build tree
         data.forEach((c) => {
-          if (c.parent_id && commentMap[c.parent_id]) {
-            commentMap[c.parent_id].replies?.push(commentMap[c.id]);
+          if (c.parent_id && map[c.parent_id]) {
+            map[c.parent_id].replies?.push(map[c.id]);
           } else {
-            rootComments.push(commentMap[c.id]);
+            roots.push(map[c.id]);
           }
         });
 
-        setComments(rootComments);
+        setComments(roots);
       }
+
       setLoading(false);
     };
 
     fetchComments();
   }, [postId]);
 
-  // 2. Add New Comment or Reply (UPDATED: No Refresh)
+  /* ================= ADD COMMENT ================= */
+
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!currentUserId) return alert("You must be logged in.");
     if (!newComment.trim()) return;
-    
+
     setSubmitting(true);
 
     const { data, error } = await supabase
@@ -89,89 +99,98 @@ export default function CommentModal({ postId, currentUserId, onClose }: Comment
         content: newComment,
         post_id: postId,
         author_id: currentUserId,
-        parent_id: replyingTo?.id || null, // <--- Link to parent if replying
+        parent_id: replyingTo?.id || null,
       })
-      .select(`*, author:profiles(username, full_name, avatar_url)`)
+      .select(`
+        *,
+        author:profiles!comments_author_id_fkey(
+          username,
+          full_name,
+          avatar_url
+        )
+      `) // ✅ same fix here
       .single();
 
     if (error) {
       alert(`Failed to add comment: ${error.message}`);
     } else if (data) {
-      // 👇 STATE UPDATE LOGIC (No Page Refresh)
-      if (data.parent_id) {
-        // CASE A: It is a REPLY. Find the parent and add to its 'replies' list.
-        setComments((prevComments) => 
-          prevComments.map((comment) => {
-            if (comment.id === data.parent_id) {
-              return {
-                ...comment,
-                replies: [...(comment.replies || []), data]
-              };
-            }
-            return comment;
-          })
+      const newItem: Comment = { ...data, replies: [] };
+
+      if (newItem.parent_id) {
+        // reply
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === newItem.parent_id
+              ? { ...c, replies: [...(c.replies || []), newItem] }
+              : c
+          )
         );
       } else {
-        // CASE B: It is a ROOT comment. Just add to the bottom.
-        setComments((prev) => [...prev, data]);
+        // root
+        setComments((prev) => [...prev, newItem]);
       }
 
-      // Reset Form
       setNewComment("");
       setReplyingTo(null);
     }
+
     setSubmitting(false);
   };
 
-  // 3. Delete Comment (UPDATED: No Refresh)
+  /* ================= DELETE ================= */
+
   const handleDelete = async (commentId: string) => {
     if (!confirm("Delete this comment?")) return;
-    
+
     const { error } = await supabase.from("comments").delete().eq("id", commentId);
-    
+
     if (!error) {
-      // Remove from state instantly
-      setComments((prevComments) => 
-        prevComments
-          // 1. Filter out if it's a root comment
-          .filter((c) => c.id !== commentId) 
-          // 2. Map through remaining comments to filter out if it's a child reply
+      setComments((prev) =>
+        prev
+          .filter((c) => c.id !== commentId)
           .map((c) => ({
             ...c,
-            replies: c.replies ? c.replies.filter((r) => r.id !== commentId) : []
+            replies: c.replies ? c.replies.filter((r) => r.id !== commentId) : [],
           }))
       );
     }
   };
 
-  // Helper to set up reply UI
+  /* ================= REPLY HELPER ================= */
+
   const initiateReply = (comment: Comment) => {
-    setReplyingTo({ id: comment.id, username: comment.author?.username || "User" });
+    setReplyingTo({
+      id: comment.id,
+      username: comment.author?.username || "User",
+    });
+
     inputRef.current?.focus();
   };
 
-  // --- REUSABLE COMMENT ITEM COMPONENT ---
+  /* ================= COMMENT ITEM ================= */
+
   const CommentItem = ({ comment, isReply = false }: { comment: Comment; isReply?: boolean }) => (
-    <div className={`flex gap-3 group ${isReply ? "mt-3" : "mt-4"}`}>
-      {/* Avatar */}
+    <div className={`flex gap-3 ${isReply ? "mt-3" : "mt-4"}`}>
+      {/* avatar */}
       <Link href={`/user/${comment.author_id}`} className="flex-shrink-0">
         {comment.author?.avatar_url ? (
-          <img 
-            src={comment.author.avatar_url} 
-            className={`${isReply ? "w-6 h-6" : "w-8 h-8"} rounded-full object-cover border border-gray-700`} 
+          <img
+            src={comment.author.avatar_url}
+            className={`${isReply ? "w-6 h-6" : "w-8 h-8"} rounded-full object-cover border border-gray-700`}
           />
         ) : (
-          <div className={`${isReply ? "w-6 h-6 text-[10px]" : "w-8 h-8 text-xs"} rounded-full bg-gray-700 flex items-center justify-center text-white font-bold`}>
+          <div
+            className={`${isReply ? "w-6 h-6 text-[10px]" : "w-8 h-8 text-xs"} rounded-full bg-gray-700 flex items-center justify-center text-white font-bold`}
+          >
             {comment.author?.username?.[0] || <User size={12} />}
           </div>
         )}
       </Link>
 
       <div className="flex-1">
-        {/* Comment Bubble */}
         <div className="bg-white/5 p-3 rounded-2xl rounded-tl-none border border-white/5">
           <div className="flex justify-between items-start mb-1">
-            <span className="text-white text-sm font-semibold hover:underline cursor-pointer">
+            <span className="text-white text-sm font-semibold">
               {comment.author?.full_name || "User"}
             </span>
             <span className="text-[10px] text-gray-500">
@@ -180,24 +199,21 @@ export default function CommentModal({ postId, currentUserId, onClose }: Comment
           </div>
           <p className="text-gray-300 text-sm">{comment.content}</p>
         </div>
-        
-        {/* Actions Row */}
+
         <div className="flex items-center gap-3 mt-1 ml-2">
-          {/* Reply Button */}
-          {!isReply && ( // Prevent nesting too deep (optional UI choice)
-             <button 
-               onClick={() => initiateReply(comment)}
-               className="text-[11px] text-gray-500 hover:text-cyan-400 flex items-center gap-1 transition-colors"
-             >
-               <MessageCircle size={12} /> Reply
-             </button>
+          {!isReply && (
+            <button
+              onClick={() => initiateReply(comment)}
+              className="text-[11px] text-gray-500 hover:text-cyan-400 flex items-center gap-1"
+            >
+              <MessageCircle size={12} /> Reply
+            </button>
           )}
 
-          {/* Delete Button */}
           {currentUserId === comment.author_id && (
-            <button 
-              onClick={() => handleDelete(comment.id)} 
-              className="text-[11px] text-red-500/50 hover:text-red-400 flex items-center gap-1 transition-colors"
+            <button
+              onClick={() => handleDelete(comment.id)}
+              className="text-[11px] text-red-500/50 hover:text-red-400 flex items-center gap-1"
             >
               <Trash2 size={12} /> Delete
             </button>
@@ -207,35 +223,36 @@ export default function CommentModal({ postId, currentUserId, onClose }: Comment
     </div>
   );
 
+  /* ================= UI ================= */
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-[#1e212b] w-full max-w-md rounded-2xl border border-gray-700 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-[#1e212b]">
+        {/* header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-700">
           <h3 className="text-white font-bold">Comments</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white bg-gray-800 p-1.5 rounded-full transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
             <X size={18} />
           </button>
         </div>
 
-        {/* Comments List */}
+        {/* list */}
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="animate-spin text-cyan-400" /></div>
+            <div className="flex justify-center py-8">
+              <Loader2 className="animate-spin text-cyan-400" />
+            </div>
           ) : comments.length === 0 ? (
             <div className="text-center text-gray-500 py-10">No comments yet.</div>
           ) : (
             comments.map((comment) => (
               <div key={comment.id}>
-                {/* Parent Comment */}
                 <CommentItem comment={comment} />
 
-                {/* Render Children (Replies) with Indentation */}
                 {comment.replies && comment.replies.length > 0 && (
                   <div className="ml-9 pl-3 border-l-2 border-gray-800">
                     {comment.replies.map((reply) => (
-                      <CommentItem key={reply.id} comment={reply} isReply={true} />
+                      <CommentItem key={reply.id} comment={reply} isReply />
                     ))}
                   </div>
                 )}
@@ -244,16 +261,14 @@ export default function CommentModal({ postId, currentUserId, onClose }: Comment
           )}
         </div>
 
-        {/* Input Area */}
-        <div className="p-4 border-t border-gray-700 bg-[#1e212b]">
-          
-          {/* Replying Indicator */}
+        {/* input */}
+        <div className="p-4 border-t border-gray-700">
           {replyingTo && (
-            <div className="flex items-center justify-between bg-cyan-500/10 px-3 py-1.5 rounded-t-lg border-x border-t border-cyan-500/20 mb-[-1px] relative z-10">
+            <div className="flex items-center justify-between bg-cyan-500/10 px-3 py-1.5 rounded-t-lg border-x border-t border-cyan-500/20 mb-[-1px]">
               <span className="text-xs text-cyan-400 flex items-center gap-1">
                 <CornerDownRight size={12} /> Replying to @{replyingTo.username}
               </span>
-              <button onClick={() => setReplyingTo(null)} className="text-cyan-400/50 hover:text-white">
+              <button onClick={() => setReplyingTo(null)} className="text-cyan-400/50">
                 <X size={12} />
               </button>
             </div>
@@ -267,18 +282,17 @@ export default function CommentModal({ postId, currentUserId, onClose }: Comment
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               disabled={submitting}
-              className={`flex-1 bg-black/20 border border-gray-700 text-sm text-white placeholder-gray-500 focus:border-cyan-500 outline-none transition-colors px-4 py-2 ${replyingTo ? 'rounded-b-2xl rounded-tr-2xl rounded-tl-none' : 'rounded-full'}`}
+              className="flex-1 bg-black/20 border border-gray-700 text-sm text-white px-4 py-2 rounded-full"
             />
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={!newComment.trim() || submitting}
-              className="bg-cyan-500 hover:bg-cyan-400 text-black p-2 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors self-end"
+              className="bg-cyan-500 hover:bg-cyan-400 text-black p-2 rounded-full disabled:opacity-50"
             >
               {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
             </button>
           </form>
         </div>
-
       </div>
     </div>
   );
