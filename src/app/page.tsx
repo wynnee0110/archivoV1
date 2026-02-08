@@ -9,6 +9,7 @@ import CommentModal from "@/app/components/CommentModal";
 import PostCard from "@/app/components/PostCard"; 
 import FollowStrip from "@/app/components/FollowStrip";
 import { fetchTechNews } from "@/app/lib/newsApi";
+import { useMemo } from "react";
 
 // 1. IMPORTS FOR STORY FEATURE
 import StoryStrip from "@/app/components/StoryStrip";
@@ -25,10 +26,30 @@ export default function HomePage() {
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const [followStripIndex, setFollowStripIndex] = useState<number>(1);
   const router = useRouter();
+  
 
+  // NEW: Track the Index of the group we are viewing, not the data itself
+  const [viewingGroupIndex, setViewingGroupIndex] = useState<number | null>(null);
   // 2. STORY UI STATES
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [viewingStories, setViewingStories] = useState<any[] | null>(null); // Stores Array of stories
+
+  // --- NEW: LOGIC TO GROUP STORIES ---
+  const groupedStories = useMemo(() => {
+    if (!stories.length) return [];
+    
+    const groups: Record<string, any[]> = {};
+    stories.forEach((story) => {
+      if (!groups[story.author_id]) groups[story.author_id] = [];
+      groups[story.author_id].push(story);
+    });
+
+    // Sort users by their most recent story
+    return Object.values(groups).sort((a, b) => 
+      new Date(b[0].created_at).getTime() - new Date(a[0].created_at).getTime()
+    );
+  }, [stories]);
+  // -----------------------------------
 
   const updateFeed = useCallback(async (isBackground = false) => {
     if (!isBackground) setLoading(true);
@@ -171,14 +192,15 @@ export default function HomePage() {
         </div>
 
         {/* --- 3. STORY STRIP --- */}
-        <div className="mb-8">
-           <StoryStrip 
-              stories={stories} 
-              currentUser={currentUser}
-              onAddStory={() => setIsUploadOpen(true)}
-              onViewStory={(userStories) => setViewingStories(userStories)}
-           />
-        </div>
+{/* UPDATE STORY STRIP PROPS */}
+      <div className="mb-8">
+         <StoryStrip 
+            groupedStories={groupedStories} // Pass the calculated groups
+            currentUser={currentUser}
+            onAddStory={() => setIsUploadOpen(true)}
+            onViewStory={(index) => setViewingGroupIndex(index)} // Save the index
+         />
+      </div>
 
         {/* --- FEED --- */}
         <div className="flex flex-col gap-6">
@@ -217,11 +239,12 @@ export default function HomePage() {
         />
       )}
 
-      {/* 3. Story Viewer Modal (Multi-Story Support) */}
-      {viewingStories && (
+{/* UPDATE VIEWER MODAL PROPS */}
+      {viewingGroupIndex !== null && (
         <StoryViewerModal 
-          stories={viewingStories}
-          onClose={() => setViewingStories(null)}
+          storyGroups={groupedStories} // Pass ALL groups
+          initialGroupIndex={viewingGroupIndex} // Pass where to start
+          onClose={() => setViewingGroupIndex(null)}
         />
       )}
 
