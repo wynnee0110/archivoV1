@@ -48,7 +48,7 @@ export const fetchTechNews = async (): Promise<NewsPost[]> => {
         username: "gnews",
         avatar_url: "https://cdn-icons-png.flaticon.com/512/21/21601.png", 
         badge: "bot",
-        border_variant: "fire"
+        border_variant: "ghost"
       }
     }));
 
@@ -70,7 +70,7 @@ export const fetchTechNews = async (): Promise<NewsPost[]> => {
           username: "guardian",
           avatar_url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ2VsbKU5ZIyU7Lo9H-s_zj7WhX2A4yyxK8dA&s", 
           badge: "verified",
-          border_variant: "glitch"
+          border_variant: "fire"
         }
       };
     });

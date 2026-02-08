@@ -1,21 +1,21 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/app/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Plus, RefreshCw } from 'lucide-react';
 import CommentModal from "@/app/components/CommentModal";
-import PostCard, { Post } from "@/app/components/PostCard"; 
+import PostCard from "@/app/components/PostCard"; 
 import { fetchTechNews } from "@/app/lib/newsApi"; 
 
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
+  // 1. Added state to store your specific profile info
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false); 
-  
-  
   const [activePostId, setActivePostId] = useState<string | null>(null); 
   const router = useRouter();
 
@@ -24,13 +24,11 @@ export default function HomePage() {
     else setIsUpdating(true);
 
     try {
-      // 1. Fetch Supabase Posts
       const { data: postsData } = await supabase
         .from("posts")
         .select("*")
         .order("created_at", { ascending: false });
 
-      // 2. Fetch Profiles for Supabase posts
       let formattedDbPosts: any[] = [];
       if (postsData && postsData.length > 0) {
         const authorIds = [...new Set(postsData.map(post => post.author_id))];
@@ -51,27 +49,18 @@ export default function HomePage() {
         }));
       }
 
-      // 3. Fetch Fresh GNews
       const newsPosts = await fetchTechNews();
-
-      // 4. RANDOMIZED SHUFFLE LOGIC 🎲
       const allPosts = [...formattedDbPosts, ...newsPosts];
 
       if (allPosts.length > 0) {
-        // Find the absolute newest item (User or News) to keep at index 0
         const newestItem = allPosts.reduce((prev, curr) => 
           new Date(curr.created_at) > new Date(prev.created_at) ? curr : prev
         );
-
-        // Shuffle the rest using Fisher-Yates algorithm
         const remainingPosts = allPosts.filter(p => p.id !== newestItem.id);
-        
         for (let i = remainingPosts.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [remainingPosts[i], remainingPosts[j]] = [remainingPosts[j], remainingPosts[i]];
         }
-
-        // Set the final randomized feed with the newest at the top
         setPosts([newestItem, ...remainingPosts]);
       }
     } catch (error) {
@@ -90,12 +79,21 @@ export default function HomePage() {
         return;
       }
       setCurrentUser(session.user);
+
+      // 2. FETCH DATA
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, username")
+        .eq("id", session.user.id)
+        .single();
+
+      if (profile) setUserProfile(profile);
+
       await updateFeed(false);
     };
 
     init();
 
-    // 🔄 AUTO-POLL: Update every 60 seconds
     const interval = setInterval(() => {
       updateFeed(true);
     }, 100000);
@@ -122,6 +120,9 @@ export default function HomePage() {
     );
   }
 
+  // 3. LOGIC: Pick the best name to show
+  const displayName = userProfile?.full_name || userProfile?.username || currentUser?.email?.split('@')[0];
+
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-[#0f1117] p-4 font-sans flex flex-col items-center">
       
@@ -131,15 +132,15 @@ export default function HomePage() {
         <div className="flex justify-between items-end mb-8 px-2">
           <div>
             <p className="text-gray-400 text-xs uppercase tracking-wider mb-1 flex items-center gap-2">
-              Live Feed {isUpdating && <RefreshCw size={10} className="animate-spin" />}
+              Welcome back {isUpdating && <RefreshCw size={10} className="animate-spin text-cyan-500" />}
             </p>
-            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 truncate max-w-[200px]">
-              {currentUser?.email?.split('@')[0]}
+            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 truncate max-w-[300px]">
+              {displayName}
             </h1>
           </div>
 
           <Link href="/create">
-             <button className="bg-white text-black px-4 py-2 rounded-full font-bold text-sm hover:bg-gray-200 transition shadow flex items-center gap-2">
+             <button className="bg-white text-black px-4 py-2 rounded-full font-bold text-sm hover:bg-gray-200 transition shadow flex items-center gap-2 border border-gray-100">
                 <Plus size={16} /> New Post
              </button>
           </Link>
