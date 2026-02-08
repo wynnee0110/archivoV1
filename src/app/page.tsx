@@ -168,12 +168,12 @@ export default function HomePage() {
   const displayName = userProfile?.full_name || userProfile?.username || currentUser?.email?.split('@')[0];
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-[#0f1117] p-4 font-sans flex flex-col items-center">
+    <main className="min-h-screen bg-gray-50 dark:bg-[#0f1117] p-1 font-sans flex flex-col items-center">
       
       <div className="w-full max-w-lg mt-10 mb-24">
         
         {/* --- HEADER --- */}
-        <div className="flex justify-between items-end mb-8 px-2">
+        <div className="flex justify-between items-end mb-2 px-2">
           <div>
             <p className="text-gray-400 text-xs uppercase tracking-wider mb-1 flex items-center gap-2">
               Welcome back {isUpdating && <RefreshCw size={10} className="animate-spin text-cyan-500" />}
@@ -192,7 +192,7 @@ export default function HomePage() {
 
         {/* --- 3. STORY STRIP --- */}
 {/* UPDATE STORY STRIP PROPS */}
-      <div className="mb-8">
+      <div className="mb-1">
          <StoryStrip 
             groupedStories={groupedStories} // Pass the calculated groups
             currentUser={currentUser}
