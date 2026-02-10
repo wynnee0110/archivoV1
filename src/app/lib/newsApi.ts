@@ -22,7 +22,7 @@ export const fetchTechNews = async (): Promise<NewsPost[]> => {
   try {
     const gnewsUrl = `https://gnews.io/api/v4/top-headlines?lang=en&country=us&max=10&apikey=${GNEWS_KEY}`;
     
-    // 1. Added "bodyText" to show-fields for full content
+    // 1."bodyText" to show-fields for full content
     const guardianUrl = `https://content.guardianapis.com/search?section=technology&show-fields=thumbnail,trailText,bodyText&page-size=10&api-key=${GUARDIAN_KEY}`;
 
     const [gnewsRes, guardianRes] = await Promise.all([
