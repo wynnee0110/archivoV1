@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
+import { usePathname } from "next/navigation";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +38,10 @@ export const metadata: Metadata = {
   },
 };
 
+
 export default function RootLayout({
+
+  
   children,
 }: Readonly<{
   children: React.ReactNode;
