@@ -1,4 +1,4 @@
-# 🌐 AR Blog - Next.js Social Media Platform
+# 🌐 Archive - Next.js Social Media Platform
 
 ![Project Status](https://img.shields.io/badge/Status-Active-success?style=flat-square)
 ![Next.js](https://img.shields.io/badge/Next.js-16.1-black?style=flat-square&logo=next.js)
